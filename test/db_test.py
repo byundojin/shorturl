@@ -9,5 +9,9 @@ def test_exp_redis(exp_db:redis.Redis):
     exp_db.set("A", "B")
     assert exp_db.get("A") == "B".encode()
 
+def test_view_redis(view_db:redis.Redis):
+    view_db.set("A", "B")
+    assert view_db.get("A") == "B".encode()
+
 
 
