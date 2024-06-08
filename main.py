@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel
 import uuid
-from db.abstract_redis import AbstractRedis
+from db.redis_db import UrlRedis
 
 def get_uuid(name):
     namespace = uuid.NAMESPACE_DNS
@@ -19,7 +19,7 @@ async def post_shorten(body:UrlBody):
     id = get_uuid(body.url)
 
     # db 저장
-    db = AbstractRedis().get()
+    db = UrlRedis().get()
     db.set(id, body.url)
 
     # todo - 만료 기한 구현 
@@ -30,7 +30,7 @@ async def post_shorten(body:UrlBody):
 async def post_shorten(short_key:str):
     # db 불러오기
 
-    db = AbstractRedis().get()
+    db = UrlRedis().get()
     url:bytes = db.get(short_key)
     if not url:
         return Response(status_code=404)
