@@ -1,9 +1,13 @@
 import pytest 
 import redis
 
-def test_redis(db:redis.Redis):
-    db.set("A", "B")
-    assert db.get("A") == "B".encode()
+def test_url_redis(exp_db:redis.Redis):
+    exp_db.set("A", "B")
+    assert exp_db.get("A") == "B".encode()
+
+def test_exp_redis(exp_db:redis.Redis):
+    exp_db.set("A", "B")
+    assert exp_db.get("A") == "B".encode()
 
 
 
