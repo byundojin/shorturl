@@ -13,5 +13,11 @@ class UrlRedis(AbstractRedis):
 class ExpRedis(AbstractRedis):
     def __new__(cls, *args, **kwargs):
         if not hasattr(cls, "_instance"):
-            cls._instance = super().__new__(cls, database=os.getenv("REDIS_DATABASE_Exp"))
+            cls._instance = super().__new__(cls, database=os.getenv("REDIS_DATABASE_EXP"))
+        return cls._instance
+    
+class ViewRedis(AbstractRedis):
+    def __new__(cls, *args, **kwargs):
+        if not hasattr(cls, "_instance"):
+            cls._instance = super().__new__(cls, database=os.getenv("REDIS_DATABASE_VIEW"))
         return cls._instance
