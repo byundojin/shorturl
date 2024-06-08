@@ -5,7 +5,7 @@ from abc import ABC
 
 class DB_Redis():
     def __new__(cls, *args, **kwargs):
-        if not setattr(cls, "_instance"):
+        if not hasattr(cls, "_instance"):
             REDIS_HOST = os.getenv("REDIS_HOST")
             REDIS_PORT = os.getenv("REDIS_PORT")
             REDIS_DATABASE = os.getenv("REDIS_DATABASE")
@@ -18,3 +18,5 @@ class DB_Redis():
 
     def get(self):
         return self._db
+
+
