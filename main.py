@@ -2,12 +2,11 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel
 import uuid
-from db.redis_db import UrlRedis, ExpRedis
+from db.redis_db import UrlRedis, ExpRedis, ViewRedis
 import datetime 
 
-def get_uuid(name):
-    namespace = uuid.NAMESPACE_DNS
-    return uuid.uuid5(namespace, name).hex
+def get_uuid():
+    return uuid.uuid4().hex
 
 app = FastAPI()
 
@@ -17,11 +16,15 @@ class UrlBody(BaseModel):
 
 @app.post("/shorten")
 async def post_shorten(body:UrlBody):
-    id = get_uuid(body.url)
+    id = get_uuid()
 
     # url_db 저장
     url_db = UrlRedis().get()
     url_db.set(id, body.url)
+    
+    # view_db 저장
+    view_db = ViewRedis().get()
+    view_db.set(id, 0)
 
     # 만료 기한 구현 
     if body.exp_date:
@@ -40,7 +43,11 @@ async def post_shorten(short_key:str):
     url_db = UrlRedis().get()
     url:bytes = url_db.get(short_key)
 
-    if not url: # 조회 불가 시 404
+    # view_db 조회
+    view_db = ViewRedis().get()
+    view:bytes = view_db.get(short_key)
+
+    if not url or not view: # 조회 불가 시 404
         return Response(status_code=404)
     
     url = url.decode()
@@ -56,8 +63,11 @@ async def post_shorten(short_key:str):
         if now > exp_time: # 기간 만료
             url_db.delete(short_key)
             exp_db.delete(short_key)
+            view_db.delete(short_key)
             return JSONResponse({"detail":"url 기간 만료"}, status_code=410)
 
-    # todo - 조회수 구현
+    # 조회수 증가 
+    view = int(view)
+    view_db.set(short_key, view + 1)
 
     return RedirectResponse(url, status_code=301)
