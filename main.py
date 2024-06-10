@@ -1,12 +1,11 @@
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel
-import uuid
-from db.redis_db import UrlRedis, ExpRedis, ViewRedis
+from db.redis_db import UrlRedis
+from db.models.url_model import UrlCreator, DateValueError, UrlModel
 import datetime 
+import redis
 
-def get_uuid():
-    return uuid.uuid4().hex
 
 app = FastAPI()
 
@@ -14,97 +13,71 @@ class UrlBody(BaseModel):
     url:str
     exp_date:str|None = None # 만료 기한
 
+def check_exp(url:UrlModel) -> bool:
+    if url.is_exp:
+        time = datetime.datetime.now()
+        if url.datetime < time:
+            return False
+    return True    
+    
 @app.post("/shorten")
 async def post_shorten(body:UrlBody):
-    id = get_uuid()
-
-    # url_db 저장
-    url_db = UrlRedis().get()
-    url_db.set(id, body.url)
-    
-    # view_db 저장
-    view_db = ViewRedis().get()
-    view_db.set(id, 0)
-
-    # 만료 기한 구현 
+    # url 생성
+    url_creator = UrlCreator()
     if body.exp_date:
-        exp_db = ExpRedis().get()
         try:
-            datetime.datetime.fromisoformat(body.exp_date)
-        except:
-            raise "iso 변환 x"
-        exp_db.set(id, body.exp_date)
+            url_creator.set_date(body.exp_date)
+        except DateValueError:
+            return # 잘못된 exp date 형식
+    url = url_creator.create(body.url)
+
+    # url 저장
+    try:
+        url_id = UrlRedis().save(url)
+    except redis.ConnectionError:
+        return # redis 연결 불가
     
-    return JSONResponse({"short_url":id}, status_code=201)
+    return JSONResponse({"short_url" : url_id})
 
 @app.get("/{short_key}")
 async def get_url(short_key:str):
-    # url_db 조회
-    url_db = UrlRedis().get()
-    url:bytes = url_db.get(short_key)
-
-    if not url : # 조회 불가 시 404
+    # url 조회
+    try:
+        url = UrlRedis().get(short_key)
+    except redis.ConnectionError:
+        return # redis 연결 불가
+    
+    if not url:
         return Response(status_code=404)
     
-    # view_db 조회
-    view_db = ViewRedis().get()
-    view:bytes = view_db.get(short_key)
+    # 기간 확인
+    if not check_exp(url):
+        UrlRedis().delete(short_key)
+        return Response(status_code=410)
+        
+    # 조회수 증가
+    url.view += 1
 
-    if not view: # 조회 불가 시 404
-        return Response(status_code=404)
-    
-    url = url.decode()
+    # 저장
+    UrlRedis().save(url, short_key)
 
-    # 만료 기간 확인
-    exp_db = ExpRedis().get()
-    exp:bytes = exp_db.get(short_key)
-    if exp:
-        exp = exp.decode()
-        now = datetime.datetime.now()
-        exp_time = datetime.datetime.fromisoformat(exp)
+    return RedirectResponse(url.url, 301)
 
-        if now > exp_time: # 기간 만료
-            url_db.delete(short_key)
-            exp_db.delete(short_key)
-            view_db.delete(short_key)
-            return JSONResponse({"detail":"url 기간 만료"}, status_code=410)
-
-    # 조회수 증가 
-    view = int(view)
-    view_db.set(short_key, view + 1)
-
-    return RedirectResponse(url, status_code=301)
 
 @app.get("/stats/{short_key}")
 async def get_stat(short_key:str):
-    # url_db 조회
-    url_db = UrlRedis().get()
-    url:bytes = url_db.get(short_key)
-
-    if not url : # 조회 불가 시 404
+    # url 조회
+    try:
+        url = UrlRedis().get(short_key)
+    except redis.ConnectionError:
+        return # redis 연결 불가
+    
+    if not url:
         return Response(status_code=404)
-    url = url.decode()
-
-    # view_db 조회
-    view_db = ViewRedis().get()
-    view:bytes = view_db.get(short_key)
-
-    if not view: # 조회 불가 시 404
-        return Response(status_code=404)
-    view = int(view)
-
-    # 만료 기간 확인
-    exp_db = ExpRedis().get()
-    exp:bytes = exp_db.get(short_key)
-    if exp:
-        exp = exp.decode()
-        now = datetime.datetime.now()
-        exp_time = datetime.datetime.fromisoformat(exp)
-
-        if now > exp_time: # 기간 만료
-            url_db.delete(short_key)
-            exp_db.delete(short_key)
-            view_db.delete(short_key)
-            return JSONResponse({"detail":"url 기간 만료"}, status_code=410)
+    
+    # 기간 확인
+    if not check_exp(url):
+        UrlRedis().delete(short_key)
+        return Response({"detail":"URL 기간 만료"}, 410)
         
-    return JSONResponse({"views": view}, status_code=200)
+    return JSONResponse({"views": url.view}, status_code=200)
