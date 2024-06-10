@@ -34,3 +34,18 @@ class UrlRedis():
     
     def delete(self, key:str) -> None:
         return self.get_db().delete(key)
+    
+from apscheduler.schedulers.background import BackgroundScheduler
+
+sched = BackgroundScheduler(deamon=True)
+
+@sched.scheduled_job('interval', minutes=5, id='delete-exp-date') # 5분 마다 만료기간 확인 후 삭제
+def delete_exp_date():
+    for key in UrlRedis().get_db().keys():
+        url = UrlRedis().get(key)
+        if not url.is_exp:
+            continue
+        if url.datetime > datetime.datetime.now():
+            UrlRedis().delete(key)
+
+sched.start()
