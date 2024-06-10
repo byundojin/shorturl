@@ -9,11 +9,16 @@ import redis
 
 app = FastAPI()
 
+# test용
+from tests.main_test import router
+app.include_router(router)
+
 class UrlBody(BaseModel):
     url:str
     exp_date:str|None = None # 만료 기한
 
 def check_exp(url:UrlModel) -> bool:
+    """만료 기간 확인 | 만료시 -> False"""
     if url.is_exp:
         time = datetime.datetime.now()
         if url.datetime < time:
@@ -31,13 +36,17 @@ async def post_shorten(body:UrlBody):
             return # 잘못된 exp date 형식
     url = url_creator.create(body.url)
 
+    # 기간 확인
+    if not check_exp(url):
+        return Response(status_code=410)
+
     # url 저장
     try:
         url_id = UrlRedis().save(url)
     except redis.ConnectionError:
         return # redis 연결 불가
     
-    return JSONResponse({"short_url" : url_id})
+    return JSONResponse({"short_url" : url_id}, 201)
 
 @app.get("/{short_key}")
 async def get_url(short_key:str):
@@ -78,6 +87,6 @@ async def get_stat(short_key:str):
     # 기간 확인
     if not check_exp(url):
         UrlRedis().delete(short_key)
-        return Response({"detail":"URL 기간 만료"}, 410)
+        return Response(status_code=410)
         
     return JSONResponse({"views": url.view}, status_code=200)
