@@ -1,5 +1,4 @@
 from fastapi.testclient import TestClient
-from db.redis_db import UrlRedis
 
 import pytest
 

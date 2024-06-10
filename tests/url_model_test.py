@@ -1,5 +1,5 @@
 import pytest 
-from db.models.url_model import UrlCreator, UrlModel
+from db.models.url_model import UrlModel
 from db.redis_db import UrlRedis
 import redis
 from tests.conftest import _url1, _url2, _url3
