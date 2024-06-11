@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Body
+from fastapi import FastAPI, Body, Path
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel, Field
 from db.redis_db import UrlRedis
@@ -76,7 +76,7 @@ async def post_shorten(body:Annotated[UrlBody, Body(openapi_examples=url_body_ex
     return JSONResponse({"short_url" : url_id}, 201)
 
 @app.get("/{short_key}")
-async def get_url(short_key:str):
+async def get_url(short_key:str = Path(title="짧은 url")):
     """원본 url redirect"""
     # url 조회
     try:
@@ -102,7 +102,7 @@ async def get_url(short_key:str):
 
 
 @app.get("/stats/{short_key}")
-async def get_stat(short_key:str):
+async def get_stat(short_key:str = Path(title="짧은 url")):
     "url 조회수 조회"
     # url 조회
     try:
