@@ -30,7 +30,7 @@ try:
 except redis.ConnectionError:
     redis_connect = False
 
-@pytest.mark.skipif(not redis_connect, reason="redis 연결 안됨")
+@pytest.mark.skipif(redis_connect, reason="redis 연결 안됨")
 @pytest.mark.parametrize(
     "url",
     [(_url1),(_url2),(_url3)]
