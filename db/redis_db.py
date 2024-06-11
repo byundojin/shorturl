@@ -41,11 +41,17 @@ sched = BackgroundScheduler(deamon=True)
 
 @sched.scheduled_job('interval', minutes=5, id='delete-exp-date') # 5분 마다 만료기간 확인 후 삭제
 def delete_exp_date():
-    for key in UrlRedis().get_db().keys():
-        url = UrlRedis().get(key)
-        if not url.is_exp:
-            continue
-        if url.datetime > datetime.datetime.now():
-            UrlRedis().delete(key)
+    print("만료키 정리 시작")
+    try:
+        for key in UrlRedis().get_db().keys():
+            url = UrlRedis().get(key)
+            if not url.is_exp:
+                continue
+            if url.datetime > datetime.datetime.now():
+                UrlRedis().delete(key)
+    except:
+        print("Redis 연결 불가")
+        return
+    print("만료키 정리 끝")
 
 sched.start()
