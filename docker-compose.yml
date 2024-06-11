@@ -6,7 +6,7 @@ services:
     ports:
       - 6379:6379
   app:
-    image: dojini/urlshort:test
+    image: dojini/urlshort:1.0.0
     container_name: urlshort
     depends_on:
       - redis
