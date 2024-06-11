@@ -11,7 +11,7 @@ router = APIRouter(
 
 @router.get("/{number}")
 async def get_example(number):
-    print("asd")
+    """test 코드 redirect 되는 곳"""
     return Response(status_code=200)
 
 client = TestClient(app)
