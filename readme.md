@@ -151,6 +151,26 @@ redirect -> <원본 url>
 }
 ```
 
+## 테스트
+
+다음 명령어를 사용하여 테스트를 진행할 수 있습니다.
+
+### main_test
+
+main.py의 로직을 테스트합니다.
+
+```
+pytest tests/main_test.py
+```
+
+### url_model_test
+
+url_model.py에 url_model 생성 및 db 저장, 불러오기를 테스트합니다.
+
+```
+pytest tests/url_model_test.py
+```
+
 ---
 
 # Redis 사용 이유
